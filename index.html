@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tu Wrapped · sube tu GPX o FIT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,900&family=Archivo:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="uploadScreen">
+  <div class="upload-box">
+    <div class="kicker">Wrapped de tu actividad</div>
+    <h1 class="num">Sube tu ruta</h1>
+    <p class="sub">Un archivo <b>.gpx</b> o <b>.fit</b> de tu bici, tu carrera o lo que sea. Todo se procesa en tu propio navegador &mdash; el archivo nunca sale de tu ordenador.</p>
+    <label class="drop" id="dropZone">
+      <input type="file" id="fileInput" accept=".gpx,.fit" hidden>
+      <span id="dropLabel">Arrastra tu archivo aquí, o toca para elegirlo</span>
+    </label>
+    <div id="errorMsg" class="error-msg"></div>
+  </div>
+</div>
+
+<div id="stage" class="hidden"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
