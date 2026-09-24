@@ -16,10 +16,20 @@
     <div class="kicker">Wrapped de tu actividad</div>
     <h1 class="num">Sube tu ruta</h1>
     <p class="sub">Un archivo <b>.gpx</b> o <b>.fit</b> de tu bici, tu carrera o lo que sea. Todo se procesa en tu propio navegador &mdash; el archivo nunca sale de tu ordenador.</p>
+
     <label class="drop" id="dropZone">
       <input type="file" id="fileInput" accept=".gpx,.fit" hidden>
       <span id="dropLabel">Arrastra tu archivo aquí, o toca para elegirlo</span>
     </label>
+    <div id="fileStatus" class="file-status"></div>
+
+    <label class="drop drop-small" id="imgDropZone">
+      <input type="file" id="imgInput" accept="image/*" hidden>
+      <span id="imgDropLabel">Foto para la portada (opcional) &mdash; si no subes ninguna, usamos el dibujo de tu propia ruta</span>
+    </label>
+    <div id="imgStatus" class="file-status"></div>
+
+    <button id="generateBtn" class="generate-btn" disabled>Generar mi Wrapped</button>
     <div id="errorMsg" class="error-msg"></div>
   </div>
 </div>
