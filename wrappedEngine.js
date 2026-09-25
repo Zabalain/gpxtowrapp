@@ -1,9 +1,15 @@
 // wrappedEngine.js — construye y anima el "Resumen de ruta" a pantalla completa.
-// El tono de los comentarios es el de un entrenador: observaciones y recomendaciones
-// orientativas a partir de los datos, nunca un diagnóstico.
+// El tono de los comentarios es el de un entrenador revisando los datos después de la
+// salida: observaciones y recomendaciones orientativas, nunca un diagnóstico.
+//
+// Para que el texto varíe de verdad de una ruta a otra, no nos basamos solo en los
+// totales: dividimos la ruta en 4 tramos y comparamos primera vs segunda mitad
+// (ritmo, potencia, pulso) para sacar conclusiones concretas de ESTA salida.
 
 import { buildRouteLineSvg, buildElevationProfileSvg } from './routeImage.js';
 import { buildBalanceScatterSvg } from './pedalChart.js';
+import { computeSegments, compareHalves } from './segments.js';
+import { buildHrZoneChart, buildSpeedOverElevationChart } from './advancedCharts.js';
 
 function fmtHM(hDecimal) {
   if (hDecimal == null) return '—';
@@ -11,24 +17,38 @@ function fmtHM(hDecimal) {
   const h = Math.floor(totalMin / 60), m = totalMin % 60;
   return `${h}:${String(m).padStart(2, '0')}`;
 }
+function pct(a, b) { return (a == null || b == null || b === 0) ? null : ((a - b) / b) * 100; }
+function kmRange(seg) { return seg ? `km ${seg.fromKm.toFixed(0)}-${seg.toKm.toFixed(0)}` : ''; }
 
 export function buildSlidesFromStats(stats, title, coverImage, points) {
   const fmt = (n, d = 0) => n == null ? '—' : n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
   const slides = [];
 
+  const segs = points ? computeSegments(points, 4) : [];
+  const validSegs = segs.filter(Boolean);
+  const halves = validSegs.length === 4 ? compareHalves(segs) : null;
+  const hardestSeg = validSegs.length ? validSegs.reduce((a, b) => ((b.avgPower ?? b.avgHr ?? 0) > (a.avgPower ?? a.avgHr ?? 0) ? b : a)) : null;
+  const climbiestSeg = validSegs.length ? validSegs.reduce((a, b) => (b.gainM > a.gainM ? b : a)) : null;
+  const fastestSeg = validSegs.length ? validSegs.reduce((a, b) => ((b.avgSpeedKmh ?? 0) > (a.avgSpeedKmh ?? 0) ? b : a)) : null;
+  const slowestSeg = validSegs.length ? validSegs.reduce((a, b) => ((b.avgSpeedKmh ?? Infinity) < (a.avgSpeedKmh ?? Infinity) ? b : a)) : null;
+
   slides.push({
     kicker: 'Resumen de ruta', headline: title || 'Tu actividad', image: coverImage || null,
-    body: `<div class="sub">Análisis de tu ruta, con el mismo criterio que usaría tu entrenador al revisar los datos después de una salida. Toca para empezar &rarr;</div>`
+    body: `<div class="sub">Análisis de tu ruta, con el mismo criterio que usaría tu entrenador al revisar los datos después de una salida: no solo los totales, también cómo evolucionó el esfuerzo tramo a tramo. Toca para empezar &rarr;</div>`
   });
 
-  // ---------- Distancia y duración (hh:mm) ----------
+  // ---------- Distancia y ritmo por tramos ----------
   const stoppedMin = (stats.totalElapsedH != null && stats.movingH != null) ? (stats.totalElapsedH - stats.movingH) * 60 : null;
-  let distComment;
-  if (stoppedMin == null) distComment = '';
-  else if (stoppedMin < 3) distComment = 'Prácticamente sin paradas: entraste y saliste casi sin bajarte de la bici.';
-  else if (stoppedMin < 15) distComment = `Unos ${fmt(stoppedMin, 0)} minutos parado en total &mdash; lo normal para repostar o hacer una foto.`;
-  else if (stoppedMin < 45) distComment = `Casi ${fmt(stoppedMin, 0)} minutos parado por el camino &mdash; una parada larga, o varias cortas.`;
-  else distComment = `Más de ${fmt(stoppedMin / 60, 1)} horas paradas &mdash; esto tuvo más pinta de excursión con calma que de entrenamiento seguido.`;
+  let distParas = [];
+  if (stoppedMin != null) {
+    if (stoppedMin < 3) distParas.push('Prácticamente sin paradas: entraste y saliste casi sin bajarte de la bici.');
+    else if (stoppedMin < 15) distParas.push(`Unos ${fmt(stoppedMin, 0)} minutos parado en total, lo normal para repostar o hacer una foto.`);
+    else if (stoppedMin < 45) distParas.push(`Casi ${fmt(stoppedMin, 0)} minutos parado por el camino &mdash; una parada larga, o varias cortas.`);
+    else distParas.push(`Más de ${fmt(stoppedMin / 60, 1)} horas paradas &mdash; esto tuvo más pinta de excursión con calma que de entrenamiento seguido.`);
+  }
+  if (fastestSeg && slowestSeg && fastestSeg !== slowestSeg) {
+    distParas.push(`Tu tramo más rápido fue el de ${kmRange(fastestSeg)} (${fmt(fastestSeg.avgSpeedKmh, 1)} km/h de media); el más lento, ${kmRange(slowestSeg)} (${fmt(slowestSeg.avgSpeedKmh, 1)} km/h) &mdash; normalmente eso delata un puerto, viento en contra, o simplemente cansancio acumulado si coincide con el tramo final.`);
+  }
   slides.push({
     kicker: 'Distancia', headline: 'Recorriste',
     body: `<div class="big num">${fmt(stats.distanceKm, 1)}</div><div class="unit">kilómetros</div>
@@ -36,50 +56,68 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
         <div class="stat-col"><div class="n num">${fmtHM(stats.totalElapsedH)}</div><div class="l">h:min totales</div></div>
         <div class="stat-col"><div class="n num">${fmtHM(stats.movingH)}</div><div class="l">h:min en marcha</div></div>
       </div>
-      <div class="sub">${distComment}</div>`
+      <div class="sub" style="max-width:40ch">${distParas.join(' ')}</div>`
   });
 
   // ---------- Desnivel ----------
   if (stats.hasElevation) {
     const ratio = stats.distanceKm ? stats.elevationGainM / stats.distanceKm : null;
-    let eleComment;
-    if (ratio == null) eleComment = '';
-    else if (ratio < 3) eleComment = 'Un perfil prácticamente de mesa de billar.';
-    else if (ratio < 7) eleComment = 'Un perfil ondulado: se nota, pero sin sustos.';
-    else if (ratio < 13) eleComment = 'Perfil montañoso de verdad, con desnivel de sobra para notarlo en las piernas.';
-    else eleComment = 'Un perfil muy exigente &mdash; más de 13 m de subida por kilómetro de media es palabra mayor.';
+    let eleParas = [];
+    if (ratio != null) {
+      if (ratio < 3) eleParas.push('Un perfil prácticamente de mesa de billar: aquí el resultado se explica casi todo por el ritmo, no por el terreno.');
+      else if (ratio < 7) eleParas.push('Un perfil ondulado: se nota, pero sin sustos.');
+      else if (ratio < 13) eleParas.push('Perfil montañoso de verdad, con desnivel de sobra para notarlo en las piernas.');
+      else eleParas.push('Un perfil muy exigente &mdash; más de 13 m de subida por kilómetro de media es palabra mayor, del tipo que condiciona toda la estrategia de la salida.');
+    }
+    if (climbiestSeg && validSegs.length === 4) {
+      const climbShare = stats.elevationGainM ? (climbiestSeg.gainM / stats.elevationGainM) * 100 : null;
+      eleParas.push(`El grueso de la subida se concentró en ${kmRange(climbiestSeg)}, con ${fmt(climbiestSeg.gainM, 0)} m${climbShare != null ? ` (casi ${fmt(climbShare, 0)}% de todo el desnivel del día)` : ''} &mdash; el resto de la ruta fue notablemente más digerible.`);
+    }
     slides.push({
       kicker: 'Desnivel', headline: 'Subiste',
       body: `<div class="big num">${fmt(stats.elevationGainM, 0)}</div><div class="unit">metros</div>
-        <div class="sub">Y bajaste ${fmt(stats.elevationLossM, 0)} m. ${eleComment}</div>`
+        <div class="sub" style="max-width:40ch">Y bajaste ${fmt(stats.elevationLossM, 0)} m. ${eleParas.join(' ')}</div>`
     });
   }
 
-  // ---------- Velocidad ----------
+  // ---------- Velocidad + gráfica velocidad sobre perfil ----------
   const speedRatio = (stats.avgSpeedKmh && stats.maxSpeedKmh) ? stats.maxSpeedKmh / stats.avgSpeedKmh : null;
   let speedComment;
   if (speedRatio == null) speedComment = '';
   else if (speedRatio < 1.6) speedComment = 'Ritmo muy constante: apenas hay diferencia entre tu punta y tu media, terreno llano o sin muchos frenazos.';
   else if (speedRatio < 2.3) speedComment = 'Diferencia normal entre punta y media &mdash; algún tramo rápido, alguna curva o repecho.';
   else speedComment = 'Mucha diferencia entre tu punta y tu media &mdash; probablemente hubo una bajada seria en algún punto de la ruta.';
+  const speedChart = (points && stats.hasElevation) ? buildSpeedOverElevationChart(points, { width: 280, height: 120 }) : '';
   slides.push({
-    kicker: 'Velocidad', headline: 'A qué ritmo fuiste',
+    kicker: 'Velocidad y terreno', headline: 'A qué ritmo fuiste',
     body: `<div class="stat-row">
         <div class="stat-col"><div class="n num">${fmt(stats.avgSpeedKmh, 1)}</div><div class="l">km/h de media</div></div>
         <div class="stat-col"><div class="n num">${fmt(stats.maxSpeedKmh, 1)}</div><div class="l">km/h de pico</div></div>
       </div>
-      <div class="sub">${speedComment}</div>`
+      <div class="sub">${speedComment}</div>
+      ${speedChart ? `<div style="margin-top:14px;color:var(--sky)">${speedChart}</div>
+      <div class="sub" style="font-size:11.5px;margin-top:2px">Fondo: perfil de elevación. Línea: tu velocidad sobre el mismo tramo &mdash; cuando una baja la otra suele subir.</div>` : ''}`
   });
 
-  // ---------- Potencia ----------
+  // ---------- Potencia (con análisis de deriva primera/segunda mitad) ----------
   if (stats.hasPower) {
     const vi = (stats.normalizedPowerW && stats.avgPowerW) ? stats.normalizedPowerW / stats.avgPowerW : null;
-    let viComment;
-    if (vi == null) viComment = '';
-    else if (vi < 1.05) viComment = 'Un esfuerzo casi de laboratorio: pocas veces se pedalea tan constante como hoy.';
-    else if (vi < 1.15) viComment = 'Ritmo bastante regular, con algún acelerón o repecho suelto.';
-    else if (vi < 1.3) viComment = 'Esfuerzo irregular: hubo tramos claramente más duros que otros.';
-    else viComment = 'Muy irregular &mdash; paradas, sprints o rampas cortas marcaron la ruta más que el ritmo sostenido.';
+    let powerParas = [];
+    if (vi != null) {
+      if (vi < 1.05) powerParas.push('Un esfuerzo casi de laboratorio: pocas veces se pedalea tan constante como hoy.');
+      else if (vi < 1.15) powerParas.push('Ritmo bastante regular, con algún acelerón o repecho suelto.');
+      else if (vi < 1.3) powerParas.push('Esfuerzo irregular: hubo tramos claramente más duros que otros.');
+      else powerParas.push('Muy irregular &mdash; paradas, sprints o rampas cortas marcaron la ruta más que el ritmo sostenido.');
+    }
+    if (halves && halves.firstHalf.avgPower != null && halves.secondHalf.avgPower != null) {
+      const drop = pct(halves.secondHalf.avgPower, halves.firstHalf.avgPower);
+      if (drop != null) {
+        if (drop < -15) powerParas.push(`Salida claramente positiva (empezaste fuerte y fuiste soltando): ${fmt(halves.firstHalf.avgPower, 0)} W de media en la primera mitad frente a ${fmt(halves.secondHalf.avgPower, 0)} W en la segunda, un ${fmt(Math.abs(drop), 0)}% menos. Si buscas rendir más en el tramo final, quizá convenga repartir mejor el esfuerzo al principio.`);
+        else if (drop > 15) powerParas.push(`Negative split muy marcado: empezaste a ${fmt(halves.firstHalf.avgPower, 0)} W y terminaste a ${fmt(halves.secondHalf.avgPower, 0)} W, un ${fmt(drop, 0)}% más fuerte en la segunda mitad. O calentaste mal al principio, o guardaste piernas a propósito &mdash; en cualquier caso, buena gestión del esfuerzo.`);
+        else powerParas.push(`Reparto de esfuerzo muy parejo entre la primera mitad (${fmt(halves.firstHalf.avgPower, 0)} W) y la segunda (${fmt(halves.secondHalf.avgPower, 0)} W) &mdash; señal de un ritmo bien calculado.`);
+      }
+    }
+    if (hardestSeg) powerParas.push(`El tramo más exigente fue ${kmRange(hardestSeg)}, con ${fmt(hardestSeg.avgPower, 0)} W de media.`);
     slides.push({
       kicker: 'Potencia', headline: 'Lo que diste al pedal',
       body: `<div class="stat-row">
@@ -87,7 +125,7 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
           <div class="stat-col"><div class="n num">${fmt(stats.maxPowerW, 0)}</div><div class="l">W de pico</div></div>
           <div class="stat-col"><div class="n num">${fmt(stats.normalizedPowerW, 0)}</div><div class="l">W normalizada</div></div>
         </div>
-        <div class="sub">${viComment}</div>`
+        <div class="sub" style="max-width:40ch">${powerParas.join(' ')}</div>`
     });
 
     if (stats.intensityFactor != null) {
@@ -104,12 +142,12 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
             <div class="stat-col"><div class="n num">${fmt(stats.trainingStressScore, 1)}</div><div class="l">TSS</div></div>
             ${stats.ftpW ? `<div class="stat-col"><div class="n num">${fmt(stats.ftpW, 0)}</div><div class="l">W tu FTP</div></div>` : ''}
           </div>
-          <div class="sub">IF = potencia normalizada &divide; FTP. Como entrenador leería un ${fmt(ifv, 2)} como ${ifLabel}.</div>`
+          <div class="sub">IF = potencia normalizada &divide; FTP. Como entrenador leería un ${fmt(ifv, 2)} como ${ifLabel}. Con un TSS de ${fmt(stats.trainingStressScore, 0)}, ${stats.trainingStressScore > 150 ? 'probablemente notes las piernas cargadas mañana: prioriza la recuperación.' : stats.trainingStressScore > 80 ? 'es una carga moderada-alta, compatible con entrenar de nuevo mañana suave.' : 'la carga fue ligera, sin problema para encadenar otra sesión de calidad pronto.'}</div>`
       });
     }
   }
 
-  // ---------- Eficiencia de pedaleo (con gráfico de dispersión) ----------
+  // ---------- Eficiencia de pedaleo ----------
   if (stats.pedaling) {
     const pd = stats.pedaling;
     const parts = [];
@@ -129,7 +167,6 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
         correction = true;
       }
     }
-
     if (pd.torqueEffLPct != null && pd.torqueEffRPct != null) {
       const avgTe = (pd.torqueEffLPct + pd.torqueEffRPct) / 2;
       if (avgTe < 60) {
@@ -142,46 +179,56 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
     } else {
       parts.push('El torque effectiveness venía a 0% en todos los puntos: el sensor no lo está reportando de verdad, así que no puedo evaluarlo &mdash; no es que tu pedaleo sea malo, es que falta el dato.');
     }
-
     const smooth = pd.smoothCombinedPct ?? (pd.smoothLPct != null && pd.smoothRPct != null ? (pd.smoothLPct + pd.smoothRPct) / 2 : null);
     if (smooth != null) {
       parts.push(smooth < 20
         ? `Suavidad de pedalada ${fmt(smooth, 0)}%, en la parte baja de lo normal &mdash; es una métrica poco accionable, no le daría más peso que a lo anterior.`
         : `Suavidad de pedalada ${fmt(smooth, 0)}%, dentro de lo que suele verse en la mayoría de ciclistas.`);
     }
-
     const verdict = correction === true
       ? '¿Hay algo que corregir? Sí, al menos vale la pena vigilarlo en próximas salidas.'
       : correction === false
         ? '¿Hay algo que corregir? No, con estos datos tu pedaleo no pide ningún ajuste.'
         : '¿Hay algo que corregir? No hay datos suficientes para saberlo con este archivo.';
-
     const scatter = points ? buildBalanceScatterSvg(points, { width: 280, height: 110 }) : '';
-
     slides.push({
       kicker: 'Eficiencia de pedaleo', headline: 'Cómo repartiste el esfuerzo entre piernas',
-      body: `<div class="sub" style="font-size:14px;max-width:38ch">${parts.join(' ')}</div>
+      body: `<div class="sub" style="font-size:14px;max-width:40ch">${parts.join(' ')}</div>
         <div class="sub" style="margin-top:14px;color:var(--dawn);font-weight:600">${verdict}</div>
         ${scatter ? `<div style="margin-top:14px;color:var(--parch)">${scatter}</div>
         <div class="sub" style="font-size:11.5px;margin-top:4px">Cada punto es una muestra del sensor (% pierna derecha); la línea gruesa es tu media. Así puedes comprobar tú mismo que la lectura tiene sentido.</div>` : ''}`
     });
   }
 
-  // ---------- Frecuencia cardíaca ----------
+  // ---------- Frecuencia cardíaca (con gráfica por zonas y deriva cardíaca) ----------
   if (stats.hasHr) {
     const reserve = (stats.maxHr != null && stats.avgHr != null) ? stats.maxHr - stats.avgHr : null;
-    let hrComment;
-    if (reserve == null) hrComment = '';
-    else if (reserve < 15) hrComment = 'Te mantuviste todo el rato muy cerca de tu techo de pulsaciones &mdash; ritmo exigente y sostenido.';
-    else if (reserve < 35) hrComment = 'Un pulso que se movió lo normal entre tramos suaves y algún esfuerzo más serio.';
-    else hrComment = 'Mucha diferencia entre tu media y tu pico &mdash; hubo tramos muy tranquilos y algún momento puntual bastante más intenso.';
+    let hrParas = [];
+    if (reserve != null) {
+      if (reserve < 15) hrParas.push('Te mantuviste todo el rato muy cerca de tu techo de pulsaciones &mdash; ritmo exigente y sostenido.');
+      else if (reserve < 35) hrParas.push('Un pulso que se movió lo normal entre tramos suaves y algún esfuerzo más serio.');
+      else hrParas.push('Mucha diferencia entre tu media y tu pico &mdash; hubo tramos muy tranquilos y algún momento puntual bastante más intenso.');
+    }
+    if (halves && stats.hasPower && halves.firstHalf.avgPower && halves.firstHalf.avgHr && halves.secondHalf.avgPower && halves.secondHalf.avgHr) {
+      const efFirst = halves.firstHalf.avgPower / halves.firstHalf.avgHr;
+      const efSecond = halves.secondHalf.avgPower / halves.secondHalf.avgHr;
+      const efDrop = pct(efSecond, efFirst);
+      if (efDrop != null && efDrop < -8) {
+        hrParas.push(`Se nota cierta deriva cardíaca: por cada pulsación conseguiste menos vatios en la segunda mitad (factor de eficiencia ${fmt(efFirst, 2)} &rarr; ${fmt(efSecond, 2)}, un ${fmt(Math.abs(efDrop), 0)}% peor). Es normal con fatiga acumulada, calor, o deshidratación &mdash; si se repite mucho de forma sistemática, trabajar la resistencia de base te ayudaría a sostenerlo mejor.`);
+      } else if (efDrop != null) {
+        hrParas.push(`Tu eficiencia cardíaca (vatios por pulsación) se mantuvo estable entre la primera y la segunda mitad &mdash; buena señal de forma física para la duración de esta salida.`);
+      }
+    }
+    const zoneChart = points ? buildHrZoneChart(points, { width: 280, height: 110 }) : '';
     slides.push({
       kicker: 'Frecuencia cardíaca', headline: 'Tu corazón',
       body: `<div class="stat-row">
           <div class="stat-col"><div class="n num">${fmt(stats.avgHr, 0)}</div><div class="l">ppm de media</div></div>
           <div class="stat-col"><div class="n num">${fmt(stats.maxHr, 0)}</div><div class="l">ppm máxima</div></div>
         </div>
-        <div class="sub">${hrComment}</div>`
+        <div class="sub" style="max-width:40ch">${hrParas.join(' ')}</div>
+        ${zoneChart ? `<div style="margin-top:12px;color:var(--parch)">${zoneChart}</div>
+        <div class="sub" style="font-size:11.5px;margin-top:2px">Color por intensidad relativa a esta ruta (Z1 más suave &rarr; Z5 más duro) &mdash; no son tus zonas reales de entrenamiento, que requieren una prueba de umbral.</div>` : ''}`
     });
   }
 
@@ -290,7 +337,7 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
 
   const slideEls = container.querySelectorAll('.slide');
   const segEls = container.querySelectorAll('#progress .seg');
-  const DURATION = 8500;
+  const DURATION = 9500;
   let idx = 0, timer = null, segStart = 0, remaining = DURATION, isPaused = false;
 
   function animateNumbers(slideEl) {
