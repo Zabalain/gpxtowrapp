@@ -85,7 +85,7 @@ async function handleFile(file) {
     const stats = computeStats(points, summary);
     // portada: la foto subida, o si no hay, el dibujo del propio track
     const cover = coverImageDataUrl || buildRouteImageDataUrl(points);
-    const slides = buildSlidesFromStats(stats, title, cover);
+    const slides = buildSlidesFromStats(stats, title, cover, points);
     lastSlides = slides; lastTitle = title;
 
     uploadScreen.classList.add('hidden');

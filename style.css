@@ -1,6 +1,7 @@
 :root{
-  --ink:#14181f; --parch:#ede3d0; --parchDim:rgba(237,227,208,0.72);
-  --dawn:#e8a33d; --clay:#a8481e; --sage:#7c8b5d; --sky:#6e8ca0;
+  --ink:#ede4d2; --parch:#231c12; --parchDim:rgba(35,28,18,0.66);
+  --dawn:#c17a2e; --clay:#9a4419; --sage:#5f6e42; --sky:#4c6575;
+  --line:rgba(35,28,18,0.16); --lineStrong:rgba(35,28,18,0.3);
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:inherit; margin:0; padding:0;}
@@ -17,7 +18,7 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
 .upload-box .sub{ font-size:15px; color:var(--parchDim); line-height:1.55; margin-bottom:26px; }
 .drop{
   display:flex; align-items:center; justify-content:center; text-align:center;
-  border:2px dashed rgba(237,227,208,0.3); border-radius:14px; padding:36px 20px;
+  border:2px dashed var(--lineStrong); border-radius:14px; padding:36px 20px;
   cursor:pointer; transition:border-color .2s, background .2s; font-size:14.5px; color:var(--parchDim);
 }
 .drop:hover, .drop.dragover{ border-color:var(--dawn); background:rgba(232,163,61,0.06); color:var(--parch); }
@@ -42,9 +43,12 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
 .slide.cover{ background-size:cover; background-position:center 55%; }
 .slide.cover::before{
   content:""; position:absolute; inset:0; z-index:0;
-  background:linear-gradient(180deg, rgba(20,24,31,0.90) 0%, rgba(20,24,31,0.55) 30%, rgba(20,24,31,0.15) 55%, rgba(20,24,31,0.55) 100%);
+  background:linear-gradient(180deg, rgba(20,17,10,0.88) 0%, rgba(20,17,10,0.52) 30%, rgba(20,17,10,0.14) 55%, rgba(20,17,10,0.55) 100%);
 }
 .slide.cover > *{ position:relative; z-index:1; }
+/* la portada siempre lleva texto claro sobre la foto oscurecida, aunque el resto del tema sea claro */
+.slide.cover .kicker, .slide.cover .headline, .slide.cover .sub{ color:#f4ecd9; }
+.slide.cover .kicker{ color:#e8c088; }
 .slide .kicker{ opacity:0; transform:translateY(8px); }
 .slide.active .kicker{ animation: rise .5s ease .1s forwards; }
 .headline{ font-size:clamp(22px,6vw,32px); max-width:22ch; opacity:0; transform:translateY(10px); }
@@ -59,7 +63,7 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
 .stat-col .l{ font-size:11.5px; color:var(--parchDim); margin-top:4px; letter-spacing:0.02em; }
 
 #progress{ position:absolute; top:0; left:0; right:0; display:flex; gap:5px; padding:12px 14px 0; padding-top:calc(12px + env(safe-area-inset-top,0px)); z-index:10; }
-#progress .seg{ flex:1; height:3px; background:rgba(237,227,208,0.22); border-radius:2px; overflow:hidden; }
+#progress .seg{ flex:1; height:3px; background:var(--line); border-radius:2px; overflow:hidden; }
 #progress .seg i{ display:block; height:100%; width:0%; background:var(--parch); }
 #progress .seg.done i{ width:100%; }
 #progress .seg.running i{ animation: fillbar linear forwards; }
@@ -78,14 +82,14 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
   display:flex; gap:10px; justify-content:center; z-index:7;
 }
 #actions button{
-  font-size:12.5px; color:var(--parch); border:1px solid rgba(237,227,208,0.3); border-radius:20px;
-  padding:9px 16px; background:rgba(20,24,31,0.55); cursor:pointer;
+  font-size:12.5px; color:var(--parch); border:1px solid var(--lineStrong); border-radius:20px;
+  padding:9px 16px; background:rgba(35,28,18,0.05); cursor:pointer;
 }
 #actions button:hover{ border-color:var(--dawn); }
 
 #replay{
   position:absolute; bottom:calc(20px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%);
-  font-size:12.5px; color:var(--parchDim); border:1px solid rgba(237,227,208,0.3); border-radius:20px;
-  padding:9px 18px; background:rgba(237,227,208,0.06); z-index:6; opacity:0; pointer-events:none; transition:opacity .3s;
+  font-size:12.5px; color:var(--parchDim); border:1px solid var(--lineStrong); border-radius:20px;
+  padding:9px 18px; background:rgba(35,28,18,0.05); z-index:6; opacity:0; pointer-events:none; transition:opacity .3s;
 }
 #replay.show{ opacity:1; pointer-events:auto; }

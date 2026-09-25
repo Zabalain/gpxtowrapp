@@ -160,7 +160,7 @@ export function fitMessagesToActivity(messages) {
     power: r[7] != null ? r[7] : null,
     temp: r[13] != null ? r[13] : null,
     grade: r[9] != null ? r[9] / 100 : null,
-    rightBalancePct: (r[30] != null && (r[30] & 0x80)) ? (r[30] & 0x7F) / 2 : null,
+    rightBalancePct: (r[30] != null && (r[30] & 0x80)) ? (r[30] & 0x7F) : null,
     torqueEffL: r[43] != null ? r[43] / 2 : null,
     torqueEffR: r[44] != null ? r[44] / 2 : null,
     smoothL: r[45] != null ? r[45] / 2 : null,

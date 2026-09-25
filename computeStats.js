@@ -64,7 +64,8 @@ export function computeStats(points, existingSummary = {}) {
   const temps = points.map(p => p.temp).filter(v => v != null);
 
   // ---------- eficiencia de pedaleo ----------
-  const balances = points.map(p => p.rightBalancePct).filter(v => v != null);
+  // el balance solo tiene sentido pedaleando: fuera de eso el sensor suele mandar 0% como relleno
+  const balances = points.filter(p => p.rightBalancePct != null && (p.power == null || p.power > 0)).map(p => p.rightBalancePct);
   const teL = points.map(p => p.torqueEffL).filter(v => v != null);
   const teR = points.map(p => p.torqueEffR).filter(v => v != null);
   const smL = points.map(p => p.smoothL).filter(v => v != null);
