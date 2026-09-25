@@ -1,7 +1,8 @@
-# Tu Wrapped
+# Resumen de ruta
 
 Sube un `.gpx` o `.fit` y genera un "story" animado con las estadísticas de tu ruta
-(distancia, desnivel, velocidad, potencia, NP, IF, TSS, frecuencia cardíaca, temperatura...).
+(distancia, desnivel, velocidad, potencia, NP, IF, TSS, frecuencia cardíaca, eficiencia
+de pedaleo, temperatura...) con comentarios que cambian según tus propios datos.
 
 Todo el parseo y los cálculos ocurren **en el navegador del visitante** — no hay backend,
 no hay servidor, el archivo nunca se sube a ningún sitio. Por eso no hace falta build ni
@@ -11,7 +12,7 @@ no hay servidor, el archivo nunca se sube a ningún sitio. Por eso no hace falta
 
 - `index.html` — pantalla de subida de archivo
 - `style.css` — estilos (tema oscuro reutilizado del resto del proyecto)
-- `app.js` — orquesta: detecta el tipo de archivo, lo parsea y pinta el Wrapped
+- `app.js` — orquesta: detecta el tipo de archivo, lo parsea y pinta el resumen
 - `gpxParser.js` — lee `.gpx` (XML) con `DOMParser`
 - `fitParser.js` — parser binario de `.fit` hecho desde cero (sin librerías)
 - `computeStats.js` — calcula distancia, desnivel, velocidad, NP, etc. a partir de los puntos
@@ -23,7 +24,7 @@ no hay servidor, el archivo nunca se sube a ningún sitio. Por eso no hace falta
    ```
    git init
    git add .
-   git commit -m "wrapped inicial"
+   git commit -m "resumen de ruta inicial"
    git branch -M main
    git remote add origin https://github.com/TU_USUARIO/TU_REPO.git
    git push -u origin main

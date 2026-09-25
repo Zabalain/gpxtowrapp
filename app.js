@@ -102,8 +102,8 @@ async function handleFile(file) {
 
 function buildFile() {
   const html = buildStandaloneHtml(lastSlides, lastTitle);
-  const safe = (lastTitle || 'wrapped').replace(/[^a-z0-9\-_]+/gi, '-').toLowerCase();
-  return new File([html], `wrapped-${safe}.html`, { type: 'text/html' });
+  const safe = (lastTitle || 'resumen').replace(/[^a-z0-9\-_]+/gi, '-').toLowerCase();
+  return new File([html], `resumen-ruta-${safe}.html`, { type: 'text/html' });
 }
 
 function saveAsFile() {
@@ -119,7 +119,7 @@ async function shareWrapped() {
   const file = buildFile();
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: lastTitle || 'Mi Wrapped', text: 'Mira mi Wrapped' });
+      await navigator.share({ files: [file], title: lastTitle || 'Mi resumen de ruta', text: 'Mira el resumen de mi ruta' });
       return;
     } catch (e) {
       // el usuario canceló el share, o el navegador lo rechazó: caemos a la descarga

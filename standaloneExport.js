@@ -1,5 +1,5 @@
 // standaloneExport.js — genera un .html independiente (sin imports, todo embebido)
-// para que el Wrapped se pueda guardar y compartir como un único archivo.
+// para que el resumen de ruta se pueda guardar y compartir como un único archivo.
 
 const STANDALONE_CSS = `
 :root{--ink:#14181f;--parch:#ede3d0;--parchDim:rgba(237,227,208,0.72);--dawn:#e8a33d;--clay:#a8481e;--sage:#7c8b5d;--sky:#6e8ca0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
@@ -157,7 +157,7 @@ export function buildStandaloneHtml(slides, title) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>${title || 'Tu Wrapped'}</title>
+<title>${title || 'Resumen de ruta'}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,900&family=Archivo:wght@500;600;700&display=swap" rel="stylesheet">

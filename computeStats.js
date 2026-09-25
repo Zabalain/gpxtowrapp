@@ -63,6 +63,30 @@ export function computeStats(points, existingSummary = {}) {
   const cads = points.map(p => p.cadence).filter(v => v != null && v > 0);
   const temps = points.map(p => p.temp).filter(v => v != null);
 
+  // ---------- eficiencia de pedaleo ----------
+  const balances = points.map(p => p.rightBalancePct).filter(v => v != null);
+  const teL = points.map(p => p.torqueEffL).filter(v => v != null);
+  const teR = points.map(p => p.torqueEffR).filter(v => v != null);
+  const smL = points.map(p => p.smoothL).filter(v => v != null);
+  const smR = points.map(p => p.smoothR).filter(v => v != null);
+  const smC = points.map(p => p.smoothCombined).filter(v => v != null);
+
+  // el torque effectiveness a veces se define pero el sensor solo manda ceros: lo tratamos como no disponible
+  const teLValid = teL.length && teL.some(v => v > 0);
+  const teRValid = teR.length && teR.some(v => v > 0);
+  const avgRightBalance = balances.length ? meanOf(balances) : null;
+
+  const pedaling = (balances.length || teLValid || teRValid || smL.length || smR.length || smC.length) ? {
+    rightBalancePct: avgRightBalance,
+    leftBalancePct: avgRightBalance != null ? 100 - avgRightBalance : null,
+    balanceSamples: balances.length,
+    torqueEffLPct: teLValid ? meanOf(teL) : null,
+    torqueEffRPct: teRValid ? meanOf(teR) : null,
+    smoothLPct: smL.length ? meanOf(smL) : null,
+    smoothRPct: smR.length ? meanOf(smR) : null,
+    smoothCombinedPct: smC.length ? meanOf(smC) : null,
+  } : null;
+
   const totalElapsedS = (points[0]?.time && points[points.length - 1]?.time)
     ? (points[points.length - 1].time - points[0].time) / 1000 : null;
 
@@ -92,6 +116,7 @@ export function computeStats(points, existingSummary = {}) {
     maxTempC: existingSummary.maxTempC ?? maxOf(temps),
     minTempC: minOf(temps),
     calories: existingSummary.calories ?? null,
+    pedaling,
     hasPower: powers.length > 0,
     hasHr: hrs.length > 0,
     hasCadence: cads.length > 0,
