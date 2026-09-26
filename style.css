@@ -23,6 +23,13 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
 }
 .drop:hover, .drop.dragover{ border-color:var(--dawn); background:rgba(232,163,61,0.06); color:var(--parch); }
 .drop-small{ margin-top:14px; padding:18px 20px; font-size:13px; }
+.title-input{
+  display:block; width:100%; margin-top:14px; padding:13px 14px; border-radius:10px;
+  border:1px solid var(--lineStrong); background:transparent; color:var(--parch);
+  font-family:'Archivo',sans-serif; font-size:14px; outline:none;
+}
+.title-input::placeholder{ color:var(--parchDim); }
+.title-input:focus{ border-color:var(--dawn); }
 .file-status{ margin-top:8px; font-size:13px; color:var(--sage); min-height:1.1em; }
 .generate-btn{
   margin-top:24px; width:100%; padding:15px; border:none; border-radius:10px;
@@ -37,7 +44,8 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
 #stage{ position:relative; height:100%; width:100%; }
 .slide{
   position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  text-align:center; padding:90px 26px 40px; opacity:0; pointer-events:none; transition:opacity .35s ease;
+  text-align:center; padding:90px 26px 150px; opacity:0; pointer-events:none; transition:opacity .35s ease;
+  overflow-y:auto;
 }
 .slide.active{ opacity:1; pointer-events:auto; }
 .slide.cover{ background-size:cover; background-position:center 55%; }
@@ -83,13 +91,14 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
 }
 #actions button{
   font-size:12.5px; color:var(--parch); border:1px solid var(--lineStrong); border-radius:20px;
-  padding:9px 16px; background:rgba(35,28,18,0.05); cursor:pointer;
+  padding:9px 16px; background:rgba(237,228,210,0.85); cursor:pointer; backdrop-filter:blur(3px);
 }
 #actions button:hover{ border-color:var(--dawn); }
 
 #replay{
   position:absolute; bottom:calc(20px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%);
   font-size:12.5px; color:var(--parchDim); border:1px solid var(--lineStrong); border-radius:20px;
-  padding:9px 18px; background:rgba(35,28,18,0.05); z-index:6; opacity:0; pointer-events:none; transition:opacity .3s;
+  padding:9px 18px; background:rgba(237,228,210,0.85); z-index:6; opacity:0; pointer-events:none; transition:opacity .3s;
+  backdrop-filter:blur(3px);
 }
 #replay.show{ opacity:1; pointer-events:auto; }

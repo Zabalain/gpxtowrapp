@@ -15,7 +15,7 @@ function fmtHM(hDecimal) {
   if (hDecimal == null) return '—';
   const totalMin = Math.round(hDecimal * 60);
   const h = Math.floor(totalMin / 60), m = totalMin % 60;
-  return `${h}:${String(m).padStart(2, '0')}`;
+  return h > 0 ? `${h}h ${m}'` : `${m}'`;
 }
 function pct(a, b) { return (a == null || b == null || b === 0) ? null : ((a - b) / b) * 100; }
 function kmRange(seg) { return seg ? `km ${seg.fromKm.toFixed(0)}-${seg.toKm.toFixed(0)}` : ''; }
@@ -53,8 +53,8 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
     kicker: 'Distancia', headline: 'Recorriste',
     body: `<div class="big num">${fmt(stats.distanceKm, 1)}</div><div class="unit">kilómetros</div>
       <div class="stat-row">
-        <div class="stat-col"><div class="n num">${fmtHM(stats.totalElapsedH)}</div><div class="l">h:min totales</div></div>
-        <div class="stat-col"><div class="n num">${fmtHM(stats.movingH)}</div><div class="l">h:min en marcha</div></div>
+        <div class="stat-col"><div class="n num">${fmtHM(stats.totalElapsedH)}</div><div class="l">de actividad</div></div>
+        <div class="stat-col"><div class="n num">${fmtHM(stats.movingH)}</div><div class="l">de pedaleo</div></div>
       </div>
       <div class="sub" style="max-width:40ch">${distParas.join(' ')}</div>`
   });
@@ -315,7 +315,17 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
   `;
   const slidesEl = container.querySelector('#slides');
   const progEl = container.querySelector('#progress');
-  const bgs = ['#f4e8d4', '#e6ecdf', '#f2e2d8', '#e4ede6', '#f3e4de', '#eaeedb', '#f4e6d6', '#e7e9ee'];
+
+  // degradado suave a lo largo de toda la presentación: de beige claro a naranja más oscuro
+  const startRgb = [247, 234, 210]; // #f7ead2, beige claro
+  const endRgb = [214, 138, 69];    // #d68a45, naranja más oscuro
+  const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+  const slideColor = (i, n) => {
+    const t = n > 1 ? i / (n - 1) : 0;
+    const [r, g, b] = [lerp(startRgb[0], endRgb[0], t), lerp(startRgb[1], endRgb[1], t), lerp(startRgb[2], endRgb[2], t)];
+    return `rgb(${r},${g},${b})`;
+  };
+  const nonCoverCount = slides.filter(s => !s.image).length;
   let bgIdx = 0;
 
   slides.forEach((s) => {
@@ -324,7 +334,8 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
     if (s.image) {
       d.style.backgroundImage = `url(${s.image})`;
     } else {
-      d.style.background = `linear-gradient(160deg, ${bgs[bgIdx % bgs.length]}, var(--ink))`;
+      const c = slideColor(bgIdx, nonCoverCount);
+      d.style.background = `linear-gradient(165deg, ${c}, var(--ink))`;
       bgIdx++;
     }
     d.innerHTML = `<div class="kicker">${s.kicker}</div><div class="headline num">${s.headline}</div>${s.body}`;

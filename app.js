@@ -82,6 +82,10 @@ async function handleFile(file) {
       return;
     }
 
+    // el título escrito a mano manda siempre sobre el del archivo, que casi nunca coincide con el de Strava
+    const typedTitle = document.getElementById('titleInput').value.trim();
+    if (typedTitle) title = typedTitle;
+
     const stats = computeStats(points, summary);
     // portada: la foto subida, o si no hay, el dibujo del propio track
     const cover = coverImageDataUrl || buildRouteImageDataUrl(points);
