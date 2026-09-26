@@ -47,6 +47,9 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
   text-align:center; padding:90px 26px 150px; opacity:0; pointer-events:none; transition:opacity .35s ease;
   overflow-y:auto;
 }
+/* si el contenido no cabe entero, se alinea arriba con scroll en vez de centrarse
+   (centrado + overflow escondería el final del texto detrás de los botones) */
+.slide.tall{ justify-content:flex-start; }
 .slide.active{ opacity:1; pointer-events:auto; }
 .slide.cover{ background-size:cover; background-position:center 55%; }
 .slide.cover::before{

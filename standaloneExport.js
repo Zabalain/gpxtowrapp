@@ -9,6 +9,7 @@ body{font-family:'Archivo',sans-serif;color:var(--parch);-webkit-font-smoothing:
 .num{font-family:'Fraunces',serif;font-weight:800;}
 #stage{position:relative;height:100%;width:100%;}
 .slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:90px 26px 90px;opacity:0;pointer-events:none;transition:opacity .35s ease;overflow-y:auto;}
+.slide.tall{justify-content:flex-start;}
 .slide.active{opacity:1;pointer-events:auto;}
 .slide.cover{background-size:cover;background-position:center 55%;}
 .slide.cover::before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(20,17,10,0.88) 0%,rgba(20,17,10,0.52) 30%,rgba(20,17,10,0.14) 55%,rgba(20,17,10,0.55) 100%);}
@@ -72,15 +73,18 @@ const STANDALONE_JS = `
   });
   var slideEls = document.querySelectorAll('.slide');
   var segEls = document.querySelectorAll('#progress .seg');
+  slideEls.forEach(function(el){ if (el.scrollHeight > el.clientHeight + 2) el.classList.add('tall'); });
 
   function animateNumbers(slideEl){
     slideEl.querySelectorAll('.num').forEach(function(el){
       if (el.dataset.animated) return;
-      var raw = el.textContent.trim().replace(/\\./g,'').replace(',', '.');
+      var original = el.textContent.trim();
+      if (!/^-?\\d{1,3}(\\.\\d{3})*(,\\d+)?$/.test(original)) return;
+      var raw = original.replace(/\\./g,'').replace(',', '.');
       var target = parseFloat(raw);
       if (isNaN(target)) return;
       el.dataset.animated = '1';
-      var decimals = (el.textContent.split(',')[1]||'').length;
+      var decimals = (original.split(',')[1]||'').length;
       var t0 = performance.now(), dur = 1600;
       function step(t){
         var p = Math.min(1, (t-t0)/dur);

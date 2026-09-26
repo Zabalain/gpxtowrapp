@@ -34,7 +34,7 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
 
   slides.push({
     kicker: 'Resumen de ruta', headline: title || 'Tu actividad', image: coverImage || null,
-    body: `<div class="sub">Análisis de tu ruta, con el mismo criterio que usaría tu entrenador al revisar los datos después de una salida: no solo los totales, también cómo evolucionó el esfuerzo tramo a tramo. Toca para empezar &rarr;</div>`
+    body: `<div class="sub">Esto es lo que ha dado de sí tu ruta: no solo los totales, también cómo evolucionó el esfuerzo tramo a tramo. Toca para empezar &rarr;</div>`
   });
 
   // ---------- Distancia y ritmo por tramos ----------
@@ -351,14 +351,22 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
   const DURATION = 9500;
   let idx = 0, timer = null, segStart = 0, remaining = DURATION, isPaused = false;
 
+  // marcar como "tall" las diapositivas cuyo contenido no cabe entero en pantalla,
+  // para que se alineen arriba y hagan scroll en vez de quedar centradas y tapadas por los botones
+  slideEls.forEach(el => { if (el.scrollHeight > el.clientHeight + 2) el.classList.add('tall'); });
+
   function animateNumbers(slideEl) {
     slideEl.querySelectorAll('.num').forEach(el => {
       if (el.dataset.animated) return;
-      const raw = el.textContent.trim().replace(/\./g, '').replace(',', '.');
+      const original = el.textContent.trim();
+      // solo animamos si el texto es un número "puro" (con puntos de miles y coma decimal opcional);
+      // cualquier otra cosa (horas "2h 20'", texto normal...) se deja tal cual, sin tocar
+      if (!/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(original)) return;
+      const raw = original.replace(/\./g, '').replace(',', '.');
       const target = parseFloat(raw);
       if (isNaN(target)) return;
       el.dataset.animated = '1';
-      const decimals = (el.textContent.split(',')[1] || '').length;
+      const decimals = (original.split(',')[1] || '').length;
       const t0 = performance.now(), dur = 1600;
       function step(t) {
         const p = Math.min(1, (t - t0) / dur);
