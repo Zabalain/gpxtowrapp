@@ -14,6 +14,17 @@ function meanOf(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.
 function maxOf(arr) { return arr.length ? Math.max(...arr) : null; }
 function minOf(arr) { return arr.length ? Math.min(...arr) : null; }
 
+// Suaviza una serie con mediana móvil (ventana impar): elimina picos de un solo punto
+// causados por ruido de GPS sin aplanar una bajada real, que se mantiene varios puntos seguidos.
+function rollingMedian(arr, window = 5) {
+  const half = Math.floor(window / 2);
+  return arr.map((_, i) => {
+    const lo = Math.max(0, i - half), hi = Math.min(arr.length, i + half + 1);
+    const win = arr.slice(lo, hi).slice().sort((a, b) => a - b);
+    return win[Math.floor(win.length / 2)];
+  });
+}
+
 // Potencia normalizada: media móvil de 30s elevada a la 4, raíz cuarta de su media (algoritmo estándar de Coggan)
 function normalizedPower(powers) {
   const valid = powers.filter(p => p != null);
@@ -31,7 +42,7 @@ function normalizedPower(powers) {
 }
 
 export function computeStats(points, existingSummary = {}) {
-  let distM = 0, gainM = 0, lossM = 0, movingS = 0, maxSpeed = 0;
+  let distM = 0, gainM = 0, lossM = 0, movingS = 0;
   const speeds = [];
   let prev = null;
 
@@ -47,10 +58,9 @@ export function computeStats(points, existingSummary = {}) {
         const dt = (p.time - prev.time) / 1000;
         if (dt > 0) {
           const v = d / dt;
-          if (v < 20) { // filtra saltos GPS irreales (>72 km/h)
+          if (v < 20) { // filtra saltos GPS irreales (>72 km/h) antes incluso de suavizar
             speeds.push(v);
             if (v > 0.5) movingS += dt;
-            if (v > maxSpeed) maxSpeed = v;
           }
         }
       }
@@ -99,10 +109,13 @@ export function computeStats(points, existingSummary = {}) {
     elevationLossM: existingSummary.totalDescentM ?? Math.round(lossM),
     totalElapsedH: existingSummary.totalElapsedS != null ? existingSummary.totalElapsedS / 3600 : (totalElapsedS != null ? totalElapsedS / 3600 : null),
     movingH: existingSummary.totalMovingS != null ? existingSummary.totalMovingS / 3600 : movingS / 3600,
-    avgSpeedKmh: (existingSummary.totalDistanceM != null && existingSummary.totalMovingS)
+    avgSpeedKmh: existingSummary.avgSpeedKmh ?? ((existingSummary.totalDistanceM != null && existingSummary.totalMovingS)
       ? (existingSummary.totalDistanceM / 1000) / (existingSummary.totalMovingS / 3600)
-      : (movingS ? (distM / 1000) / (movingS / 3600) : null),
-    maxSpeedKmh: maxSpeed * 3.6,
+      : (movingS ? (distM / 1000) / (movingS / 3600) : null)),
+    // la velocidad punta del propio dispositivo (si la trae) ya viene filtrada de fábrica;
+    // si hay que calcularla nosotros, se suaviza con mediana móvil para no quedarnos con
+    // un pico de un único punto GPS (ruido típico de 60-80 km/h irreales en llano)
+    maxSpeedKmh: existingSummary.maxSpeedKmh ?? (speeds.length ? maxOf(rollingMedian(speeds, 5)) * 3.6 : null),
     avgHr: existingSummary.avgHr ?? (hrs.length ? Math.round(meanOf(hrs)) : null),
     maxHr: existingSummary.maxHr ?? maxOf(hrs),
     avgPowerW: existingSummary.avgPowerW ?? (powers.length ? Math.round(meanOf(powers)) : null),

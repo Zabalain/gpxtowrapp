@@ -72,6 +72,9 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
     if (climbiestSeg && validSegs.length === 4) {
       const climbShare = stats.elevationGainM ? (climbiestSeg.gainM / stats.elevationGainM) * 100 : null;
       eleParas.push(`El grueso de la subida se concentró en ${kmRange(climbiestSeg)}, con ${fmt(climbiestSeg.gainM, 0)} m${climbShare != null ? ` (casi ${fmt(climbShare, 0)}% de todo el desnivel del día)` : ''} &mdash; el resto de la ruta fue notablemente más digerible.`);
+      if (climbiestSeg === slowestSeg) {
+        eleParas.push('Coincide, como es de esperar por simple física, con tu tramo más lento de toda la ruta: a mayor pendiente, mayor resistencia gravitatoria que vencer para una misma potencia.');
+      }
     }
     slides.push({
       kicker: 'Desnivel', headline: 'Subiste',
@@ -214,7 +217,16 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
       const efSecond = halves.secondHalf.avgPower / halves.secondHalf.avgHr;
       const efDrop = pct(efSecond, efFirst);
       if (efDrop != null && efDrop < -8) {
-        hrParas.push(`Se nota cierta deriva cardíaca: por cada pulsación conseguiste menos vatios en la segunda mitad (factor de eficiencia ${fmt(efFirst, 2)} &rarr; ${fmt(efSecond, 2)}, un ${fmt(Math.abs(efDrop), 0)}% peor). Es normal con fatiga acumulada, calor, o deshidratación &mdash; si se repite mucho de forma sistemática, trabajar la resistencia de base te ayudaría a sostenerlo mejor.`);
+        const tempRise = (halves.secondHalf.avgTempC != null && halves.firstHalf.avgTempC != null) ? halves.secondHalf.avgTempC - halves.firstHalf.avgTempC : null;
+        let cause;
+        if (tempRise != null && tempRise > 3) {
+          cause = `y la temperatura registrada respalda una causa concreta: subió de ${fmt(halves.firstHalf.avgTempC, 0)}°C a ${fmt(halves.secondHalf.avgTempC, 0)}°C entre mitades. Con calor, el cuerpo redirige flujo sanguíneo hacia la piel para disipar temperatura, lo que reduce el retorno venoso y obliga al corazón a latir más rápido para mantener el mismo gasto cardíaco (deriva cardiovascular inducida por calor, un mecanismo fisiológico bien descrito en la literatura de fisiología del ejercicio).`;
+        } else if (tempRise != null) {
+          cause = `pero no por calor: la temperatura registrada no sube de forma relevante entre mitades (${fmt(halves.firstHalf.avgTempC, 0)}°C &rarr; ${fmt(halves.secondHalf.avgTempC, 0)}°C), así que el origen más probable es fatiga muscular acumulada o un descenso en la hidratación, no el termómetro.`;
+        } else {
+          cause = 'un patrón compatible con fatiga acumulada o deshidratación progresiva, las dos causas más habituales cuando no hay un salto térmico que lo explique.';
+        }
+        hrParas.push(`Se nota deriva cardíaca: por cada pulsación conseguiste menos vatios en la segunda mitad (factor de eficiencia ${fmt(efFirst, 2)} &rarr; ${fmt(efSecond, 2)}, un ${fmt(Math.abs(efDrop), 0)}% peor), ${cause}`);
       } else if (efDrop != null) {
         hrParas.push(`Tu eficiencia cardíaca (vatios por pulsación) se mantuvo estable entre la primera y la segunda mitad &mdash; buena señal de forma física para la duración de esta salida.`);
       }
@@ -232,22 +244,29 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
     });
   }
 
-  // ---------- Cadencia ----------
+  // ---------- Cadencia (contrastada contra el perfil real, nunca por defecto) ----------
   if (stats.hasCadence) {
     let cadComment;
+    const gradeRatio = (stats.hasElevation && stats.distanceKm) ? stats.elevationGainM / stats.distanceKm : null;
     if (stats.avgCadence == null) cadComment = '';
-    else if (stats.avgCadence < 70) cadComment = stats.hasPower
-      ? 'Cadencia baja con desarrollos largos &mdash; más fuerza por pedalada que velocidad de piernas. Si buscas cuidar las rodillas a largo plazo, yo probaría a subir un poco el cambio.'
-      : 'Cadencia baja: pedaleas con desarrollos largos, más de fuerza que de giro.';
-    else if (stats.avgCadence > 90) cadComment = 'Cadencia alta y ligera, típica de un pedaleo muy fluido.';
-    else cadComment = 'Cadencia en el rango habitual de la mayoría de ciclistas.';
+    else if (stats.avgCadence < 70) {
+      if (gradeRatio != null && gradeRatio > 7) {
+        cadComment = `Cadencia baja (${fmt(stats.avgCadence, 0)} rpm), pero coherente con el perfil: con ${fmt(gradeRatio, 1)} m/km de desnivel medio, es fisiológicamente esperable pedalear más despacio y aplicar más fuerza por pedalada en las rampas &mdash; la relación fuerza-velocidad del músculo desplaza el rango de cadencia eficiente hacia abajo cuando aumenta la resistencia a vencer.`;
+      } else if (gradeRatio != null) {
+        cadComment = `Cadencia baja (${fmt(stats.avgCadence, 0)} rpm) en un perfil que no la justifica por sí solo (${fmt(gradeRatio, 1)} m/km, bastante llano): parece más una preferencia personal de pedaleo &mdash;desarrollos largos, más fuerza y menos giro&mdash; que algo impuesto por el terreno. Si buscas cuidar las rodillas a largo plazo, subir algo el cambio reduce la fuerza pico por pedalada.`;
+      } else {
+        cadComment = 'Cadencia baja: pedaleas con desarrollos largos, más de fuerza que de giro.';
+      }
+    }
+    else if (stats.avgCadence > 90) cadComment = 'Cadencia alta y ligera. A igual potencia, subir la cadencia traslada parte de la carga del sistema muscular al cardiovascular &mdash; por eso suele ir asociada a menos fatiga localizada en las piernas a cambio de un pulso algo más alto.';
+    else cadComment = 'Cadencia en el rango habitual de la mayoría de ciclistas (70-90 rpm), sin nada que destacar en un sentido u otro.';
     slides.push({
       kicker: 'Cadencia', headline: 'El ritmo de tus piernas',
       body: `<div class="stat-row">
           <div class="stat-col"><div class="n num">${fmt(stats.avgCadence, 0)}</div><div class="l">rpm de media</div></div>
           <div class="stat-col"><div class="n num">${fmt(stats.maxCadence, 0)}</div><div class="l">rpm máxima</div></div>
         </div>
-        <div class="sub">${cadComment}</div>`
+        <div class="sub" style="max-width:40ch">${cadComment}</div>`
     });
   }
 
@@ -387,6 +406,7 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
     });
     animateNumbers(slideEls[idx]);
     container.querySelector('#replay').classList.toggle('show', idx === slides.length - 1);
+    container.querySelector('#actions').classList.toggle('show', idx === slides.length - 1);
     remaining = DURATION;
     startSegment();
   }

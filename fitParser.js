@@ -185,6 +185,8 @@ export function fitMessagesToActivity(messages) {
     trainingStressScore: sc(session[35], 10),
     ftpW: session[45] ?? null,
     avgHr: session[16] ?? null,
+    avgSpeedKmh: session[14] != null ? (session[14] / 1000) * 3.6 : null,
+    maxSpeedKmh: session[15] != null ? (session[15] / 1000) * 3.6 : null,
     maxHr: session[17] ?? null,
     avgCadence: session[18] ?? null,
     maxCadence: session[19] ?? null,

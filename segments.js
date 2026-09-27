@@ -39,6 +39,7 @@ export function computeSegments(points, n = 4) {
     const powers = seg.map(p => p.power).filter(v => v != null);
     const hrs = seg.map(p => p.hr).filter(v => v != null && v > 0);
     const cads = seg.map(p => p.cadence).filter(v => v != null && v > 0);
+    const temps = seg.map(p => p.temp).filter(v => v != null);
     let gain = 0;
     for (let j = 1; j < seg.length; j++) {
       if (seg[j].ele != null && seg[j - 1].ele != null) {
@@ -55,6 +56,7 @@ export function computeSegments(points, n = 4) {
       avgPower: powers.length ? meanOf(powers) : null,
       avgHr: hrs.length ? meanOf(hrs) : null,
       avgCadence: cads.length ? meanOf(cads) : null,
+      avgTempC: temps.length ? meanOf(temps) : null,
       gainM: Math.round(gain),
       avgSpeedKmh: segTimeS ? (segDist / 1000) / (segTimeS / 3600) : null,
     });
@@ -70,7 +72,7 @@ export function compareHalves(segments) {
     return vals.length ? meanOf(vals) : null;
   };
   return {
-    firstHalf: { avgPower: avg(segments[0], segments[1], 'avgPower'), avgHr: avg(segments[0], segments[1], 'avgHr'), avgSpeedKmh: avg(segments[0], segments[1], 'avgSpeedKmh') },
-    secondHalf: { avgPower: avg(segments[2], segments[3], 'avgPower'), avgHr: avg(segments[2], segments[3], 'avgHr'), avgSpeedKmh: avg(segments[2], segments[3], 'avgSpeedKmh') },
+    firstHalf: { avgPower: avg(segments[0], segments[1], 'avgPower'), avgHr: avg(segments[0], segments[1], 'avgHr'), avgSpeedKmh: avg(segments[0], segments[1], 'avgSpeedKmh'), avgTempC: avg(segments[0], segments[1], 'avgTempC') },
+    secondHalf: { avgPower: avg(segments[2], segments[3], 'avgPower'), avgHr: avg(segments[2], segments[3], 'avgHr'), avgSpeedKmh: avg(segments[2], segments[3], 'avgSpeedKmh'), avgTempC: avg(segments[2], segments[3], 'avgTempC') },
   };
 }
