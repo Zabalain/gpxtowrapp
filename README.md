@@ -10,13 +10,19 @@ no hay servidor, el archivo nunca se sube a ningún sitio. Por eso no hace falta
 
 ## Estructura
 
-- `index.html` — pantalla de subida de archivo
-- `style.css` — estilos (tema oscuro reutilizado del resto del proyecto)
+- `index.html` — pantalla de subida (archivo, título de la actividad y foto de portada opcional)
+- `style.css` — estilos (tema claro, degradado beige → naranja entre diapositivas)
 - `app.js` — orquesta: detecta el tipo de archivo, lo parsea y pinta el resumen
 - `gpxParser.js` — lee `.gpx` (XML) con `DOMParser`
 - `fitParser.js` — parser binario de `.fit` hecho desde cero (sin librerías)
-- `computeStats.js` — calcula distancia, desnivel, velocidad, NP, etc. a partir de los puntos
-- `wrappedEngine.js` — construye y anima las diapositivas a pantalla completa
+- `computeStats.js` — distancia, desnivel, velocidad, NP, eficiencia de pedaleo... a partir de los puntos
+- `elevation.js` — desnivel acumulado con zona muerta (evita inflarlo con el ruido del altímetro)
+- `segments.js` — divide la ruta en 4 tramos para comparar primera vs segunda mitad
+- `advancedCharts.js` — gráfica de pulso por zonas y de velocidad sobre el perfil
+- `pedalChart.js` — dispersión del balance izquierda/derecha
+- `routeImage.js` — dibujo del track (portada de respaldo, resumen final)
+- `wrappedEngine.js` — genera los comentarios y anima las diapositivas
+- `standaloneExport.js` — empaqueta el resumen como un único .html descargable
 
 ## Desplegar en Vercel (desde GitHub)
 

@@ -1,3 +1,5 @@
+import { elevationGainLoss } from './elevation.js';
+
 // computeStats.js — calcula todas las métricas a partir del array de puntos normalizado.
 
 function haversine(lat1, lon1, lat2, lon2) {
@@ -105,8 +107,8 @@ export function computeStats(points, existingSummary = {}) {
 
   return {
     distanceKm: existingSummary.totalDistanceM != null ? existingSummary.totalDistanceM / 1000 : distM / 1000,
-    elevationGainM: existingSummary.totalAscentM ?? Math.round(gainM),
-    elevationLossM: existingSummary.totalDescentM ?? Math.round(lossM),
+    elevationGainM: existingSummary.totalAscentM ?? Math.round(elevationGainLoss(points).gain),
+    elevationLossM: existingSummary.totalDescentM ?? Math.round(elevationGainLoss(points).loss),
     totalElapsedH: existingSummary.totalElapsedS != null ? existingSummary.totalElapsedS / 3600 : (totalElapsedS != null ? totalElapsedS / 3600 : null),
     movingH: existingSummary.totalMovingS != null ? existingSummary.totalMovingS / 3600 : movingS / 3600,
     avgSpeedKmh: existingSummary.avgSpeedKmh ?? ((existingSummary.totalDistanceM != null && existingSummary.totalMovingS)

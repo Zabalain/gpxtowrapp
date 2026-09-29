@@ -79,8 +79,6 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
 #progress .seg.done i{ width:100%; }
 #progress .seg.running i{ animation: fillbar linear forwards; }
 @keyframes fillbar{ from{width:0%;} to{width:100%;} }
-.navzone{ position:absolute; top:0; bottom:0; width:35%; z-index:5; }
-.navzone.left{ left:0; } .navzone.right{ right:0; }
 
 .pausehint{
   position:absolute; top:calc(38px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%);
@@ -107,3 +105,10 @@ body{ font-family:'Archivo',sans-serif; color:var(--parch); -webkit-font-smoothi
   backdrop-filter:blur(3px);
 }
 #replay.show{ opacity:1; pointer-events:auto; }
+
+#scrollhint{
+  position:absolute; bottom:calc(22px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%);
+  font-size:12px; color:var(--parch); background:rgba(237,228,210,0.9); border:1px solid var(--lineStrong);
+  border-radius:20px; padding:7px 14px; z-index:6; opacity:0; pointer-events:none; transition:opacity .25s;
+}
+#scrollhint.show{ opacity:1; }

@@ -34,8 +34,6 @@ body{font-family:'Archivo',sans-serif;color:var(--parch);-webkit-font-smoothing:
 #progress .seg.done i{width:100%;}
 #progress .seg.running i{animation:fillbar linear forwards;}
 @keyframes fillbar{from{width:0%;}to{width:100%;}}
-.navzone{position:absolute;top:0;bottom:0;width:35%;z-index:5;}
-.navzone.left{left:0;}.navzone.right{right:0;}
 #replay{position:absolute;bottom:calc(26px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);font-size:12.5px;color:var(--parchDim);border:1px solid var(--lineStrong);border-radius:20px;padding:9px 18px;background:rgba(237,228,210,0.85);z-index:6;opacity:0;pointer-events:none;transition:opacity .3s;}
 #replay.show{opacity:1;pointer-events:auto;}
 .pausehint{position:absolute;top:calc(38px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-6px);font-size:11px;color:var(--parchDim);opacity:0;transition:opacity .2s;z-index:6;pointer-events:none;}
@@ -98,6 +96,10 @@ const STANDALONE_JS = `
 
   function render(){
     slideEls.forEach(function(el,i){ el.classList.toggle('active', i===idx); });
+    var cur = slideEls[idx];
+    cur.classList.remove('tall');
+    cur.classList.toggle('tall', cur.scrollHeight > cur.clientHeight + 2);
+    cur.scrollTop = 0;
     segEls.forEach(function(seg,i){
       seg.classList.remove('running','done');
       seg.querySelector('i').style.animation = 'none';
@@ -105,7 +107,7 @@ const STANDALONE_JS = `
     });
     animateNumbers(slideEls[idx]);
     document.getElementById('replay').classList.toggle('show', idx===SLIDES.length-1);
-    remaining = DURATION;
+    remaining = cur.classList.contains('tall') ? DURATION * 2 : DURATION;
     startSegment();
   }
   function startSegment(){
@@ -142,8 +144,13 @@ const STANDALONE_JS = `
   function next(){ if (idx<SLIDES.length-1){ idx++; render(); } }
   function prev(){ if (idx>0){ idx--; render(); } }
 
-  document.getElementById('navR').addEventListener('click', function(){ if(!isPaused) next(); });
-  document.getElementById('navL').addEventListener('click', function(){ if(!isPaused) prev(); });
+  document.getElementById('slides').addEventListener('click', function(e){
+    if (isPaused) return;
+    var rect = document.getElementById('stage').getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    if (x < rect.width*0.35) prev();
+    else if (x > rect.width*0.65) next();
+  });
   document.getElementById('replay').addEventListener('click', function(){ idx=0; render(); });
   document.addEventListener('keydown', function(e){
     if (e.key===' '){ e.preventDefault(); isPaused?resume():pause(); }
@@ -183,8 +190,6 @@ export function buildStandaloneHtml(slides, title) {
 <body>
 <div id="stage">
   <div id="progress"></div>
-  <div class="navzone left" id="navL"></div>
-  <div class="navzone right" id="navR"></div>
   <div id="slides"></div>
   <div class="pausehint" id="pausehint">Pausado &mdash; suelta para seguir</div>
   <button id="replay">Volver a ver &#8635;</button>

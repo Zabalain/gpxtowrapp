@@ -20,6 +20,51 @@ function fmtHM(hDecimal) {
 function pct(a, b) { return (a == null || b == null || b === 0) ? null : ((a - b) / b) * 100; }
 function kmRange(seg) { return seg ? `km ${seg.fromKm.toFixed(0)}-${seg.toKm.toFixed(0)}` : ''; }
 
+
+// Resumen final en voz de entrenador. Cada frase sale de un dato real del archivo y solo
+// se incluye si ese dato lo respalda; si falta un dato (p. ej. potencia), se dice, no se rellena.
+function coachSummary(stats, halves, gradeRatio, fmt) {
+  const out = [];
+  const ifv = stats.intensityFactor;
+
+  // 1) clasificación de la sesión (umbrales de intensidad de Coggan sobre el IF)
+  if (ifv != null) {
+    if (ifv < 0.6) out.push('Zona de recuperación activa: una salida suave que suma volumen sin apenas fatiga.');
+    else if (ifv < 0.72) out.push('Zona de resistencia aeróbica: estás creando un buen fondo, la base sobre la que se apoya el resto del entrenamiento.');
+    else if (ifv < 0.85) out.push('Entrenamiento de intensidad moderada-alta (tempo / sweet spot): un estímulo muy rentable para mejorar tu forma física, siempre que recuperes bien después.');
+    else if (ifv < 0.95) out.push('Entrenamiento duro, cerca de tu umbral: estímulo potente pero exigente, respeta el descanso posterior.');
+    else out.push('Sesión de muy alta intensidad: úsala con moderación y planifica una recuperación completa.');
+  } else {
+    out.push(`Salida de ${fmt(stats.distanceKm, 0)} km${stats.hasElevation ? ` con ${fmt(stats.elevationGainM, 0)} m de desnivel` : ''} a ${fmt(stats.avgSpeedKmh, 1)} km/h de media. Sin datos de potencia no puedo clasificar la intensidad con rigor, así que me limito a lo que muestran el ritmo y el terreno.`);
+  }
+
+  // 2) consejos: solo los que respalda el archivo, máximo dos por prioridad
+  const advice = [];
+  const pd = stats.pedaling;
+  if (pd && pd.leftBalancePct != null && Math.abs(50 - pd.leftBalancePct) > 10) {
+    advice.push('Revisa el reparto entre piernas, que se aleja bastante del 50/50.');
+  }
+  if (stats.hasHr && stats.maxHr != null && stats.avgHr != null && (stats.maxHr - stats.avgHr) >= 35 && (ifv == null || ifv < 0.85)) {
+    advice.push(`Tu pulso llegó a ${fmt(stats.maxHr, 0)} ppm con una media de ${fmt(stats.avgHr, 0)}: si quieres que esta zona sea más efectiva, evita forzar${gradeRatio != null && gradeRatio > 5 ? ' en las subidas' : ' en los repuntes'} para no disparar esos picos.`);
+  }
+  if (halves && halves.firstHalf.avgPower && halves.secondHalf.avgPower) {
+    const drop = ((halves.secondHalf.avgPower - halves.firstHalf.avgPower) / halves.firstHalf.avgPower) * 100;
+    if (drop < -15) advice.push(`Reparte mejor el esfuerzo: en la segunda mitad bajaste un ${fmt(Math.abs(drop), 0)}% de potencia.`);
+  }
+  if (stats.hasCadence && stats.avgCadence != null && stats.avgCadence < 70 && !(gradeRatio != null && gradeRatio > 7)) {
+    advice.push('Controla la cadencia: subirla un poco reduce la fuerza por pedalada y cuida las rodillas.');
+  }
+  if (advice.length === 0) {
+    // solo se afirma "todo bien" si hay datos que lo respalden; sin sensores no se puede valorar
+    const assessed = stats.hasPower || stats.hasHr || halves;
+    advice.push(assessed
+      ? 'Los datos son coherentes y estables: mantén este planteamiento.'
+      : 'Con datos de potencia o de pulso podría darte consejos más concretos sobre cómo repartir el esfuerzo.');
+  }
+  out.push(...advice.slice(0, 2));
+  return out.join(' ');
+}
+
 export function buildSlidesFromStats(stats, title, coverImage, points) {
   const fmt = (n, d = 0) => n == null ? '—' : n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
   const slides = [];
@@ -288,9 +333,11 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
     });
   }
 
-  // ---------- Resumen final, con perfil y track ----------
-  const routeSvg = points ? buildRouteLineSvg(points, { width: 260, height: 150 }) : '';
-  const eleSvg = (points && stats.hasElevation) ? buildElevationProfileSvg(points, { width: 260, height: 80 }) : '';
+  // ---------- Resumen final: lectura del entrenador + perfil y track ----------
+  const gradeRatioAll = (stats.hasElevation && stats.distanceKm) ? stats.elevationGainM / stats.distanceKm : null;
+  const coachText = coachSummary(stats, halves, gradeRatioAll, fmt);
+  const routeSvg = points ? buildRouteLineSvg(points, { width: 200, height: 90 }) : '';
+  const eleSvg = (points && stats.hasElevation) ? buildElevationProfileSvg(points, { width: 200, height: 45 }) : '';
   slides.push({
     kicker: 'El resumen', headline: title || 'Tu actividad',
     body: `<div class="stat-row">
@@ -299,21 +346,18 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
         ${stats.hasPower ? `<div class="stat-col"><div class="n num">${fmt(stats.normalizedPowerW, 0)}</div><div class="l">W NP</div></div>` : ''}
         ${stats.hasHr ? `<div class="stat-col"><div class="n num">${fmt(stats.avgHr, 0)}</div><div class="l">ppm</div></div>` : ''}
       </div>
-      ${routeSvg ? `<div style="margin-top:18px;color:var(--dawn)">${routeSvg}</div>` : ''}
-      ${eleSvg ? `<div style="margin-top:8px;color:var(--dawn)">${eleSvg}</div>` : ''}`
+      <div class="sub" style="max-width:40ch;font-size:14px">${coachText}</div>
+      ${routeSvg ? `<div style="margin-top:12px;color:var(--dawn)">${routeSvg}</div>` : ''}
+      ${eleSvg ? `<div style="margin-top:4px;color:var(--dawn)">${eleSvg}</div>` : ''}`
   });
 
-  // ---------- Fuentes y aviso ----------
-  const sources = ['Garmin FIT SDK (formato .fit)', 'Especificación GPX 1.1 (formato .gpx)'];
-  if (stats.hasPower) sources.push('Potencia normalizada, Intensity Factor y TSS: metodología de Andrew Coggan (Training and Racing with a Power Meter)');
+  // ---------- Fuentes y aviso (compacto: aquí aparecen los botones) ----------
+  const srcParts = ['Garmin FIT SDK', 'GPX 1.1'];
+  if (stats.hasPower) srcParts.push('A. Coggan (potencia normalizada, IF, TSS)');
   slides.push({
     kicker: 'Fuentes y aviso', headline: 'Antes de irte',
-    body: `<div class="sub" style="max-width:38ch;text-align:left">
-        <b>Fuentes de datos:</b><br>${sources.map(s => '&bull; ' + s).join('<br>')}
-      </div>
-      <div class="sub" style="max-width:38ch;text-align:left;margin-top:16px">
-        Los comentarios y recomendaciones de este resumen son <b>orientativos</b>, generados automáticamente a partir de tus propios datos, con el mismo criterio general que aplicaría un entrenador al revisarlos por encima. No sustituyen la valoración de un entrenador certificado ni de un profesional médico &mdash; ante cualquier duda real (dolor, desequilibrio persistente, planificación de entrenamiento), consulta siempre con uno.
-      </div>`
+    body: `<div class="sub" style="max-width:36ch;font-size:13.5px"><b>Fuentes:</b> ${srcParts.join(' &middot; ')}.</div>
+      <div class="sub" style="max-width:36ch;font-size:13.5px;margin-top:10px">Comentarios y consejos <b>orientativos</b>, generados automáticamente a partir de tus datos. No sustituyen la valoración de un entrenador certificado ni de un profesional médico: ante cualquier duda, consúltalo.</div>`
   });
 
   return slides;
@@ -322,10 +366,9 @@ export function buildSlidesFromStats(stats, title, coverImage, points) {
 export function renderWrapped(container, slides, { onSave, onShare } = {}) {
   container.innerHTML = `
     <div id="progress"></div>
-    <div class="navzone left" id="navL"></div>
-    <div class="navzone right" id="navR"></div>
     <div id="slides"></div>
     <div class="pausehint" id="pausehint">Pausado &mdash; suelta para seguir</div>
+    <div id="scrollhint">&#8595; desliza para leer más</div>
     <div id="actions">
       <button id="saveBtn" title="Guardar como archivo">&#8681; Guardar</button>
       <button id="shareBtn" title="Compartir">&#8599; Compartir</button>
@@ -397,8 +440,22 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
     });
   }
 
+  const hintEl = container.querySelector('#scrollhint');
+  function updateHint() {
+    const cur = slideEls[idx];
+    const canScroll = cur.classList.contains('tall') && idx !== slides.length - 1 && cur.scrollTop < 8;
+    hintEl.classList.toggle('show', canScroll);
+  }
+  slideEls.forEach(el => el.addEventListener('scroll', updateHint, { passive: true }));
+
   function render() {
     slideEls.forEach((el, i) => el.classList.toggle('active', i === idx));
+    // recomputar si el contenido no cabe (las fuentes web pueden cambiar las alturas tras cargar)
+    const curEl = slideEls[idx];
+    curEl.classList.remove('tall');
+    curEl.classList.toggle('tall', curEl.scrollHeight > curEl.clientHeight + 2);
+    curEl.scrollTop = 0;
+    updateHint();
     segEls.forEach((seg, i) => {
       seg.classList.remove('running', 'done');
       seg.querySelector('i').style.animation = 'none';
@@ -407,7 +464,8 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
     animateNumbers(slideEls[idx]);
     container.querySelector('#replay').classList.toggle('show', idx === slides.length - 1);
     container.querySelector('#actions').classList.toggle('show', idx === slides.length - 1);
-    remaining = DURATION;
+    // las diapositivas con texto largo (scroll) se quedan más tiempo en pantalla para poder leerlas
+    remaining = curEl.classList.contains('tall') ? DURATION * 2 : DURATION;
     startSegment();
   }
   function startSegment() {
@@ -442,8 +500,15 @@ export function renderWrapped(container, slides, { onSave, onShare } = {}) {
   function next() { if (idx < slides.length - 1) { idx++; render(); } }
   function prev() { if (idx > 0) { idx--; render(); } }
 
-  container.querySelector('#navR').addEventListener('click', () => { if (!isPaused) next(); });
-  container.querySelector('#navL').addEventListener('click', () => { if (!isPaused) prev(); });
+  // clic/toque directamente sobre el contenido: como es un simple tap (sin arrastre),
+  // el navegador no lo confunde con un gesto de scroll, así que ambas cosas conviven bien
+  container.querySelector('#slides').addEventListener('click', (e) => {
+    if (isPaused) return;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width * 0.35) prev();
+    else if (x > rect.width * 0.65) next();
+  });
   container.querySelector('#replay').addEventListener('click', () => { idx = 0; render(); });
   document.addEventListener('keydown', e => {
     if (e.key === ' ') { e.preventDefault(); isPaused ? resume() : pause(); }

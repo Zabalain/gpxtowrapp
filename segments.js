@@ -1,3 +1,4 @@
+import { elevationGainLoss } from './elevation.js';
 // segments.js — divide la ruta en tramos (por distancia) para poder comparar
 // primera mitad vs segunda mitad, o identificar el cuarto más duro/flojo.
 
@@ -40,13 +41,7 @@ export function computeSegments(points, n = 4) {
     const hrs = seg.map(p => p.hr).filter(v => v != null && v > 0);
     const cads = seg.map(p => p.cadence).filter(v => v != null && v > 0);
     const temps = seg.map(p => p.temp).filter(v => v != null);
-    let gain = 0;
-    for (let j = 1; j < seg.length; j++) {
-      if (seg[j].ele != null && seg[j - 1].ele != null) {
-        const d = seg[j].ele - seg[j - 1].ele;
-        if (d > 0) gain += d;
-      }
-    }
+    const gain = elevationGainLoss(seg).gain;
     let segDist = 0;
     for (let j = 1; j < seg.length; j++) segDist += haversine(seg[j - 1].lat, seg[j - 1].lon, seg[j].lat, seg[j].lon);
     let segTimeS = (seg[0].time && seg[seg.length - 1].time) ? (seg[seg.length - 1].time - seg[0].time) / 1000 : null;
